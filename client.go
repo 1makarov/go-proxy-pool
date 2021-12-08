@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,50 @@ func New(setting Setting) (*Client, error) {
 		setting: setting,
 		storage: newStorage(setting.MaxCountConn),
 	}, nil
+}
+
+func (c *Client) AddArray(proxyRaw []string, thread int) error {
+	ch := make(chan error, 1)
+	var stopped bool
+
+	go func() {
+		wg := &sync.WaitGroup{}
+
+		for i, p := range proxyRaw {
+			if stopped {
+				return
+			}
+
+			proxy := p
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				if err := c.Add(proxy); err != nil {
+					ch <- err
+				}
+			}()
+
+			if i == 0 {
+				continue
+			}
+
+			if i%thread == 0 {
+				wg.Wait()
+			}
+		}
+		wg.Wait()
+
+		close(ch)
+	}()
+
+	for err := range ch {
+		stopped = true
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) Add(proxyRaw string) error {
