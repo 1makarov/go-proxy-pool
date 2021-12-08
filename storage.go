@@ -1,8 +1,8 @@
 package proxypool
 
 import (
-	"fmt"
 	"sync"
+	"time"
 )
 
 type Storage struct {
@@ -24,20 +24,22 @@ func (s *Storage) add(proxy *Proxy) {
 	s.proxies[proxy.url.String()] = proxy
 }
 
-func (s *Storage) get() (*Proxy, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *Storage) get() *Proxy {
+	for {
+		s.mu.Lock()
 
-	for _, proxy := range s.proxies {
-		if proxy.count >= s.maxCountConn {
-			continue
+		for _, proxy := range s.proxies {
+			if proxy.count >= s.maxCountConn {
+				continue
+			}
+
+			proxy.count += 1
+			return proxy
 		}
 
-		proxy.count += 1
-		return proxy, nil
+		s.mu.Unlock()
+		time.Sleep(time.Second)
 	}
-
-	return nil, fmt.Errorf("empty proxy")
 }
 
 func (s *Storage) close(proxy *Proxy) {

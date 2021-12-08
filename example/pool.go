@@ -19,8 +19,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	proxy, err := client.Get()
-	fmt.Println(proxy, err)
+	proxy := client.Get()
+	fmt.Println(proxy)
 
 	client.Close(proxy)
 }

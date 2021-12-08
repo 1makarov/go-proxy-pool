@@ -22,6 +22,12 @@ func New(setting Setting) (*Client, error) {
 	if setting.TestURL == "" {
 		return nil, fmt.Errorf("empty test url")
 	}
+	if setting.MaxCountConn == 0 {
+		setting.MaxCountConn = 3
+	}
+	if setting.Timeout == 0 {
+		setting.Timeout = time.Second * 5
+	}
 
 	return &Client{
 		setting: setting,
@@ -40,16 +46,8 @@ func (c *Client) Add(proxyRaw string) error {
 	return nil
 }
 
-func (c *Client) Get() (*Proxy, error) {
-	for {
-		proxy, err := c.storage.get()
-		if err != nil {
-			time.Sleep(c.setting.Timeout)
-			continue
-		}
-
-		return proxy, nil
-	}
+func (c *Client) Get() *Proxy {
+	return c.storage.get()
 }
 
 func (c *Client) Close(proxy *Proxy) {
