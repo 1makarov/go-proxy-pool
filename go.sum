@@ -1,0 +1,6 @@
+github.com/1makarov/go-cache v0.0.7 h1:GclAgkG1XD1QQy/+jtM6NpB9XsIMd3qfTbR3sS6nn54=
+github.com/1makarov/go-cache v0.0.7/go.mod h1:bGbut1KRlh2FTA1t7ZVt3H5Ipp4pR4FCW2vehtwfpEI=
+github.com/1makarov/go-cache v0.0.8 h1:2TFZfSRs6wmkE6ytYmtfLlkIkStQhFum45zC5o4d/uY=
+github.com/1makarov/go-cache v0.0.8/go.mod h1:bGbut1KRlh2FTA1t7ZVt3H5Ipp4pR4FCW2vehtwfpEI=
+github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
+github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=

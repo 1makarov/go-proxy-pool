@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultMaxCountConn = 3
-	defaultTestTimeout  = 5
+	defaultTestTimeout  = 5 * time.Second
 	defaultTestURL      = "https://api.ip.sb/ip"
 )
 

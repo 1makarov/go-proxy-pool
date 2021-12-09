@@ -1,41 +1,51 @@
 package proxypool
 
 import (
-	"github.com/1makarov/go-proxy-pool/types"
 	"sync"
 	"time"
 )
 
+type item struct {
+	proxy *Proxy
+	count int
+}
+
 type storage struct {
-	proxies      map[string]*types.Proxy
+	available    map[string]*item
+	disabled     map[string]*item
 	mu           sync.Mutex
 	maxCountConn int
 }
 
 func newStorage(maxCountConn int) *storage {
-	proxies := make(map[string]*types.Proxy)
-
-	return &storage{proxies: proxies, maxCountConn: maxCountConn}
+	return &storage{
+		available:    make(map[string]*item),
+		disabled:     make(map[string]*item),
+		maxCountConn: maxCountConn,
+	}
 }
 
-func (s *storage) add(proxy *types.Proxy) {
-	s.mu.Lock()
+func (s *storage) add(proxy *Proxy) {
 	defer s.mu.Unlock()
+	s.mu.Lock()
 
-	s.proxies[proxy.url.String()] = proxy
+	s.available[proxy.URL.String()] = &item{proxy: proxy}
 }
 
-func (s *storage) get() *types.Proxy {
+func (s *storage) get() *Proxy {
 	for {
 		s.mu.Lock()
 
-		for _, proxy := range s.proxies {
-			if proxy.count >= s.maxCountConn {
-				continue
+		for _, i := range s.available {
+			i.count += 1
+
+			if i.count >= s.maxCountConn {
+				delete(s.available, i.proxy.URL.String())
+				s.disabled[i.proxy.URL.String()] = i
 			}
 
-			proxy.count += 1
-			return proxy
+			s.mu.Unlock()
+			return i.proxy
 		}
 
 		s.mu.Unlock()
@@ -43,11 +53,21 @@ func (s *storage) get() *types.Proxy {
 	}
 }
 
-func (s *storage) close(proxy *types.Proxy) {
+func (s *storage) close(proxy *Proxy) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if v, ok := s.proxies[proxy.url.String()]; ok {
-		v.count -= 1
+	if i, ok := s.disabled[proxy.URL.String()]; ok {
+		delete(s.disabled, proxy.URL.String())
+		i.count -= 1
+		s.available[proxy.URL.String()] = i
+		return
 	}
+
+	i := s.available[proxy.URL.String()]
+	if i.count > 0 {
+		i.count -= 1
+	}
+
+	return
 }
