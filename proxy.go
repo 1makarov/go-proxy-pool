@@ -20,7 +20,7 @@ type Proxy struct {
 	URL *url.URL
 }
 
-func (c *proxyClient) New(rawProxy string) (*Proxy, error) {
+func (c *proxyClient) new(rawProxy string) (*Proxy, error) {
 	proxy, err := url.Parse(rawProxy)
 	if err != nil {
 		return nil, err

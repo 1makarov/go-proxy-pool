@@ -43,7 +43,7 @@ func New(s Setting) (*Client, error) {
 }
 
 func (c *Client) Add(rawProxy string) error {
-	proxy, err := c.proxyClient.New(rawProxy)
+	proxy, err := c.proxyClient.new(rawProxy)
 	if err != nil {
 		return fmt.Errorf("error add proxy: %s, %w", rawProxy, err)
 	}
