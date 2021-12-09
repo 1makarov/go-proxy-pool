@@ -2,76 +2,50 @@ package proxypool
 
 import (
 	"fmt"
-	"github.com/1makarov/go-proxy-pool/proxy"
-	"sync"
+	"time"
 )
 
+const (
+	defaultMaxCountConn = 3
+	defaultTestTimeout  = 5
+	defaultTestURL      = "https://api.ip.sb/ip"
+)
+
+type Setting struct {
+	TestURL      string
+	TestTimeout  time.Duration
+	MaxCountConn int
+}
+
 type Client struct {
-	proxyClient  *proxy.Client
-	storage      *Storage
+	proxyClient  *proxyClient
+	storage      *storage
 	maxCountConn int
 }
 
-func New(maxCountConn int, proxyClient *proxy.Client) (*Client, error) {
-	if maxCountConn == 0 {
-		maxCountConn = 3
+func New(s Setting) (*Client, error) {
+	if s.MaxCountConn == 0 {
+		s.MaxCountConn = defaultMaxCountConn
+	}
+
+	if s.TestTimeout == 0 {
+		s.TestTimeout = defaultTestTimeout
+	}
+
+	if s.TestURL == "" {
+		s.TestURL = defaultTestURL
 	}
 
 	return &Client{
-		proxyClient:  proxyClient,
-		storage:      newStorage(maxCountConn),
-		maxCountConn: maxCountConn,
+		proxyClient: newProxyClient(s.TestURL, s.TestTimeout),
+		storage:     newStorage(s.MaxCountConn),
 	}, nil
 }
 
-func (c *Client) AddArray(proxyRaw []string, thread int) error {
-	ch := make(chan error, 1)
-	var stopped bool
-
-	go func() {
-		wg := &sync.WaitGroup{}
-
-		for i, p := range proxyRaw {
-			if stopped {
-				break
-			}
-
-			proxy := p
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				if err := c.Add(proxy); err != nil {
-					ch <- err
-				}
-			}()
-
-			if i == 0 {
-				continue
-			}
-
-			if i%thread == 0 {
-				wg.Wait()
-			}
-		}
-		wg.Wait()
-
-		close(ch)
-	}()
-
-	for err := range ch {
-		stopped = true
-		return err
-	}
-
-	return nil
-}
-
-func (c *Client) Add(proxyRaw string) error {
-	proxy, err := c.validate(proxyRaw)
+func (c *Client) Add(rawProxy string) error {
+	proxy, err := c.proxyClient.New(rawProxy)
 	if err != nil {
-		return fmt.Errorf("error add proxy: %s, %w", proxyRaw, err)
+		return fmt.Errorf("error add proxy: %s, %w", rawProxy, err)
 	}
 
 	c.storage.add(proxy)
@@ -79,10 +53,10 @@ func (c *Client) Add(proxyRaw string) error {
 	return nil
 }
 
-func (c *Client) Get() *types.Proxy {
+func (c *Client) Get() *Proxy {
 	return c.storage.get()
 }
 
-func (c *Client) Close(proxy *types.Proxy) {
+func (c *Client) Close(proxy *Proxy) {
 	c.storage.close(proxy)
 }

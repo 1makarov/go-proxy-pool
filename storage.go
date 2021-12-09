@@ -6,26 +6,26 @@ import (
 	"time"
 )
 
-type Storage struct {
+type storage struct {
 	proxies      map[string]*types.Proxy
 	mu           sync.Mutex
 	maxCountConn int
 }
 
-func newStorage(maxCountConn int) *Storage {
+func newStorage(maxCountConn int) *storage {
 	proxies := make(map[string]*types.Proxy)
 
-	return &Storage{proxies: proxies, maxCountConn: maxCountConn}
+	return &storage{proxies: proxies, maxCountConn: maxCountConn}
 }
 
-func (s *Storage) add(proxy *types.Proxy) {
+func (s *storage) add(proxy *types.Proxy) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.proxies[proxy.url.String()] = proxy
 }
 
-func (s *Storage) get() *types.Proxy {
+func (s *storage) get() *types.Proxy {
 	for {
 		s.mu.Lock()
 
@@ -43,7 +43,7 @@ func (s *Storage) get() *types.Proxy {
 	}
 }
 
-func (s *Storage) close(proxy *types.Proxy) {
+func (s *storage) close(proxy *types.Proxy) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
