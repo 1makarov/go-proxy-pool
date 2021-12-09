@@ -2,37 +2,25 @@ package proxypool
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
+	"github.com/1makarov/go-proxy-pool/proxy"
 	"sync"
-	"time"
 )
 
 type Client struct {
-	setting Setting
-	storage *Storage
+	proxyClient  *proxy.Client
+	storage      *Storage
+	maxCountConn int
 }
 
-type Setting struct {
-	MaxCountConn int
-	TestURL      string
-	Timeout      time.Duration
-}
-
-func New(setting Setting) (*Client, error) {
-	if setting.TestURL == "" {
-		return nil, fmt.Errorf("empty test url")
-	}
-	if setting.MaxCountConn == 0 {
-		setting.MaxCountConn = 3
-	}
-	if setting.Timeout == 0 {
-		setting.Timeout = time.Second * 5
+func New(maxCountConn int, proxyClient *proxy.Client) (*Client, error) {
+	if maxCountConn == 0 {
+		maxCountConn = 3
 	}
 
 	return &Client{
-		setting: setting,
-		storage: newStorage(setting.MaxCountConn),
+		proxyClient:  proxyClient,
+		storage:      newStorage(maxCountConn),
+		maxCountConn: maxCountConn,
 	}, nil
 }
 
@@ -45,7 +33,7 @@ func (c *Client) AddArray(proxyRaw []string, thread int) error {
 
 		for i, p := range proxyRaw {
 			if stopped {
-				return
+				break
 			}
 
 			proxy := p
@@ -91,45 +79,10 @@ func (c *Client) Add(proxyRaw string) error {
 	return nil
 }
 
-func (c *Client) Get() *Proxy {
+func (c *Client) Get() *types.Proxy {
 	return c.storage.get()
 }
 
-func (c *Client) Close(proxy *Proxy) {
+func (c *Client) Close(proxy *types.Proxy) {
 	c.storage.close(proxy)
-}
-
-func (c *Client) validate(proxyRaw string) (*Proxy, error) {
-	proxy, err := url.Parse(proxyRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = c.request(proxy); err != nil {
-		return nil, err
-	}
-
-	return &Proxy{url: proxy}, nil
-}
-
-func (c *Client) request(proxy *url.URL) error {
-	transport := &http.Transport{
-		Proxy: http.ProxyURL(proxy),
-	}
-
-	client := http.Client{
-		Transport: transport,
-		Timeout:   c.setting.Timeout,
-	}
-
-	resp, err := client.Get(c.setting.TestURL)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode == 200 || resp.StatusCode == 201 {
-		return nil
-	}
-
-	return fmt.Errorf("error request")
 }
